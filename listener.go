@@ -1,6 +1,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -14,13 +15,20 @@ type connInfo struct {
 
 type listener struct {
 	ID           int `json:"id"`
+	Port         int
 	net.Listener `json:"-"`
 	Out          []*connInfo    `json:"connections"`
 	retry        chan *connInfo `json:"-"`
+	up           bool
 }
 
-func (l *listener) up(port int) error {
-	netListener, err := net.Listen("tcp", fmt.Sprintf(":%d", port))
+var ErrListenerAlreadyUp = errors.New("Listener is already up.")
+
+func (l *listener) start() error {
+	if l.up {
+		return ErrListenerAlreadyUp
+	}
+	netListener, err := net.Listen("tcp", fmt.Sprintf(":%d", l.Port))
 	if err != nil {
 		return err
 	}
@@ -29,10 +37,11 @@ func (l *listener) up(port int) error {
 	go l.connectOut()
 	go l.retryConnections()
 	go l.checkConnections()
+	l.up = true
 	return nil
 }
 
-func (l *listener) down() error {
+func (l *listener) stop() error {
 	log.Printf("tearing listener %d down\n", l.ID)
 	return l.Close()
 }
@@ -89,6 +98,7 @@ func (l *listener) handleMessages() {
 				if err != nil {
 					break
 				}
+				fmt.Fprintf(conn, "%s\n", msg)
 				fmt.Printf("Got message on %d: %s\n", l.ID, msg)
 			}
 		}()
