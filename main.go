@@ -35,7 +35,7 @@ func addListenerHandler(w http.ResponseWriter, r *http.Request, _ httprouter.Par
 	if err := dec.Decode(&l); err != nil {
 		panic(err)
 	}
-	listeners.Start(&l)
+	listeners.Add(&l)
 }
 
 func removeListenerHandler(w http.ResponseWriter, r *http.Request, ps httprouter.Params) {
